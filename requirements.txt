@@ -1,0 +1,7 @@
+# PostgreSQL Performance Analysis Automation Dependencies
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Email functionality is built into Python's standard library (smtplib, email.mime)
+# No additional packages needed since Claude generates HTML directly

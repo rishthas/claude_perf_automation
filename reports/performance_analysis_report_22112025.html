@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostgreSQL Performance Analysis Report - November 22, 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            padding-bottom: 30px;
+            border-bottom: 3px solid #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .executive-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .executive-summary h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            padding-bottom: 10px;
+        }
+
+        .critical-issues {
+            background-color: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        .critical-issues h3 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+
+        .issue-item {
+            background-color: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            border-left: 4px solid #f39c12;
+        }
+
+        .issue-item strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .section h3 {
+            color: #34495e;
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .metric-card.warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .metric-card.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .metric-card.info {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+
+        .alert-danger {
+            background-color: #fee;
+            border-color: #e74c3c;
+            color: #c0392b;
+        }
+
+        .alert-warning {
+            background-color: #fef8e7;
+            border-color: #f39c12;
+            color: #d68910;
+        }
+
+        .alert-info {
+            background-color: #e8f4f8;
+            border-color: #3498db;
+            color: #2980b9;
+        }
+
+        .alert-success {
+            background-color: #eafaf1;
+            border-color: #27ae60;
+            color: #1e8449;
+        }
+
+        .code-block {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .code-block pre {
+            margin: 0;
+        }
+
+        .recommendation-card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .recommendation-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .priority-high {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .priority-medium {
+            border-left: 4px solid #f39c12;
+        }
+
+        .priority-low {
+            border-left: 4px solid #3498db;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .badge-high {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .badge-medium {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .badge-low {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .badge-quick {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #ecf0f1;
+            color: #7f8c8d;
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PostgreSQL Performance Analysis Report</h1>
+            <p class="subtitle">Multi-Tenant Database System | November 22, 2025</p>
+            <p class="subtitle">Analysis Period: Last 24 Hours | PostgreSQL 16.10 | EC2 t3.2xlarge</p>
+        </div>
+
+        <div class="executive-summary">
+            <h2>Executive Summary</h2>
+            <p><strong>System Status:</strong> Operational with performance concerns requiring immediate attention</p>
+            <p><strong>Current Performance:</strong> ~2,071 TPS (Target: 500-2,000 TPS) ✓</p>
+            <p><strong>System Uptime:</strong> 22 days, 10 hours | <strong>Databases:</strong> 64 active tenants</p>
+
+            <div class="critical-issues">
+                <h3>Top 3 Critical Issues</h3>
+
+                <div class="issue-item">
+                    <strong>1. CRITICAL: Low Cache Hit Ratio on Major Databases</strong>
+                    <p>Multiple high-traffic databases showing cache hit ratios below 85%:</p>
+                    <ul>
+                        <li><strong>mileohotels:</strong> 58.21% (3.3 GB database, 271M transactions)</li>
+                        <li><strong>bobcranes:</strong> 84.22% (823 MB database, 552M transactions)</li>
+                        <li><strong>alldayminimart:</strong> 88.63% (259 MB database, 209M transactions)</li>
+                    </ul>
+                    <p><strong>Impact:</strong> Excessive disk I/O causing performance bottlenecks. Target should be 95%+</p>
+                    <p><strong>Quick Fix:</strong> Increase shared_buffers from 20GB to 24GB (75% of 32GB RAM)</p>
+                </div>
+
+                <div class="issue-item">
+                    <strong>2. HIGH: Excessive Deadlocks Across Multiple Tenants</strong>
+                    <p>Critical deadlock activity detected:</p>
+                    <ul>
+                        <li><strong>interequipment:</strong> 12,805 deadlocks</li>
+                        <li><strong>regentconnect:</strong> 12,729 deadlocks</li>
+                        <li><strong>alldayminimart:</strong> 5,951 deadlocks</li>
+                        <li><strong>ovaaccessories:</strong> 5,621 deadlocks</li>
+                        <li><strong>talal:</strong> 5,155 deadlocks</li>
+                        <li><strong>bobcranes:</strong> 4,312 deadlocks</li>
+                    </ul>
+                    <p><strong>Impact:</strong> Transaction rollbacks, application errors, poor user experience</p>
+                    <p><strong>Root Cause:</strong> UPDATE queries on employee_employeetransaction table without proper locking strategy</p>
+                </div>
+
+                <div class="issue-item">
+                    <strong>3. MEDIUM: Slow UPDATE Queries Dominating Execution Time</strong>
+                    <p>Single query pattern consuming 239 seconds of total execution time:</p>
+                    <ul>
+                        <li><strong>Query:</strong> UPDATE employee_employeetransaction SET first_last_calculated...</li>
+                        <li><strong>Calls:</strong> 147,949 executions</li>
+                        <li><strong>Average Time:</strong> 1,617 ms per query</li>
+                        <li><strong>Max Time:</strong> 97,057 ms (97 seconds!)</li>
+                    </ul>
+                    <p><strong>Impact:</strong> Poor application responsiveness, connection pool saturation</p>
+                    <p><strong>Recommendation:</strong> Add composite index on (employee_id, approve_status, punch_time)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>1. Database Performance Metrics</h2>
+
+            <h3>1.1 Overall System Health</h3>
+            <div class="metric-grid">
+                <div class="metric-card success">
+                    <div class="metric-label">Current TPS</div>
+                    <div class="metric-value">2,071</div>
+                </div>
+                <div class="metric-card success">
+                    <div class="metric-label">Queries/Second</div>
+                    <div class="metric-value">2,236</div>
+                </div>
+                <div class="metric-card info">
+                    <div class="metric-label">Active Databases</div>
+                    <div class="metric-value">64</div>
+                </div>
+                <div class="metric-card info">
+                    <div class="metric-label">Total Connections</div>
+                    <div class="metric-value">~350</div>
+                </div>
+            </div>
+
+            <h3>1.2 Top 10 Databases by Transaction Volume</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Database (Tenant)</th>
+                        <th>Size</th>
+                        <th>Active Connections</th>
+                        <th>Total Transactions</th>
+                        <th>Cache Hit Ratio</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>poweron</strong></td>
+                        <td>336 MB</td>
+                        <td>17</td>
+                        <td>766,767,943</td>
+                        <td style="color: #27ae60;">95.02%</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>bobcranes</strong></td>
+                        <td>823 MB</td>
+                        <td>10</td>
+                        <td>552,285,249</td>
+                        <td style="color: #e74c3c;">84.22%</td>
+                        <td><span class="badge badge-high">Attention</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ovaaccessories</strong></td>
+                        <td>283 MB</td>
+                        <td>19</td>
+                        <td>371,415,529</td>
+                        <td style="color: #f39c12;">90.57%</td>
+                        <td><span class="badge badge-medium">Monitor</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>interequipment</strong></td>
+                        <td>420 MB</td>
+                        <td>4</td>
+                        <td>346,874,446</td>
+                        <td style="color: #27ae60;">98.23%</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>talal</strong></td>
+                        <td>425 MB</td>
+                        <td>24</td>
+                        <td>322,300,606</td>
+                        <td style="color: #27ae60;">93.17%</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>mileohotels</strong></td>
+                        <td>3,280 MB</td>
+                        <td>11</td>
+                        <td>271,546,519</td>
+                        <td style="color: #e74c3c;">58.21%</td>
+                        <td><span class="badge badge-high">Critical</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>alldayminimart</strong></td>
+                        <td>259 MB</td>
+                        <td>12</td>
+                        <td>209,021,632</td>
+                        <td style="color: #f39c12;">88.63%</td>
+                        <td><span class="badge badge-medium">Monitor</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>meokja</strong></td>
+                        <td>197 MB</td>
+                        <td>12</td>
+                        <td>208,440,505</td>
+                        <td style="color: #27ae60;">97.64%</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>shantilal</strong></td>
+                        <td>1,848 MB</td>
+                        <td>4</td>
+                        <td>199,445,692</td>
+                        <td style="color: #27ae60;">97.94%</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>transking</strong></td>
+                        <td>364 MB</td>
+                        <td>13</td>
+                        <td>192,846,990</td>
+                        <td style="color: #27ae60;">92.95%</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>1.3 Deadlock Analysis by Tenant</h3>
+            <div class="alert alert-danger">
+                <strong>Critical Issue:</strong> Excessive deadlock activity detected across multiple tenants. Immediate investigation required.
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Database</th>
+                        <th>Deadlocks</th>
+                        <th>Temp Files</th>
+                        <th>Temp Data Size</th>
+                        <th>Block Read Time (ms)</th>
+                        <th>Severity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fee;">
+                        <td><strong>interequipment</strong></td>
+                        <td>12,805</td>
+                        <td>21</td>
+                        <td>11 MB</td>
+                        <td>1,194,534,224</td>
+                        <td><span class="badge badge-high">Critical</span></td>
+                    </tr>
+                    <tr style="background-color: #fee;">
+                        <td><strong>regentconnect</strong></td>
+                        <td>12,729</td>
+                        <td>0</td>
+                        <td>0 bytes</td>
+                        <td>94,911</td>
+                        <td><span class="badge badge-high">Critical</span></td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td><strong>alldayminimart</strong></td>
+                        <td>5,951</td>
+                        <td>12</td>
+                        <td>4.3 MB</td>
+                        <td>1,161,756,723</td>
+                        <td><span class="badge badge-medium">High</span></td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td><strong>ovaaccessories</strong></td>
+                        <td>5,621</td>
+                        <td>14</td>
+                        <td>3.7 MB</td>
+                        <td>3,598,971,757</td>
+                        <td><span class="badge badge-medium">High</span></td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td><strong>talal</strong></td>
+                        <td>5,155</td>
+                        <td>4</td>
+                        <td>120 kB</td>
+                        <td>1,031,148,905</td>
+                        <td><span class="badge badge-medium">High</span></td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td><strong>bobcranes</strong></td>
+                        <td>4,312</td>
+                        <td>34</td>
+                        <td>51 MB</td>
+                        <td>9,607,148,094</td>
+                        <td><span class="badge badge-medium">High</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>2. Query Performance Analysis</h2>
+
+            <h3>2.1 Slow Query Log Summary</h3>
+            <div class="alert alert-info">
+                <strong>Configuration:</strong> log_min_duration_statement = 250ms (queries longer than 250ms are logged)<br>
+                <strong>Finding:</strong> No queries exceeded 1,000ms in the last 24 hours. However, pg_stat_statements reveals significant performance issues with UPDATE queries.
+            </div>
+
+            <h3>2.2 Most Expensive Queries by Total Execution Time</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Query Type</th>
+                        <th>Calls</th>
+                        <th>Avg Time (ms)</th>
+                        <th>Max Time (ms)</th>
+                        <th>Total Time (ms)</th>
+                        <th>Rows Affected</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fee;">
+                        <td>UPDATE employee_employeetransaction (Pattern 1)</td>
+                        <td>147,949</td>
+                        <td>1,617.65</td>
+                        <td><strong>97,057.58</strong></td>
+                        <td>239,330,041</td>
+                        <td>325,143</td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td>UPDATE employee_employeetransaction (Pattern 2)</td>
+                        <td>382,557</td>
+                        <td>235.32</td>
+                        <td>43,102.26</td>
+                        <td>90,021,865</td>
+                        <td>724,672</td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td>UPDATE employee_employeetransaction (Pattern 3)</td>
+                        <td>335,683</td>
+                        <td>266.15</td>
+                        <td>72,727.38</td>
+                        <td>89,341,212</td>
+                        <td>583,303</td>
+                    </tr>
+                    <tr>
+                        <td>UPDATE employee_employeetransaction (Pattern 4)</td>
+                        <td>88,650</td>
+                        <td>582.35</td>
+                        <td>29,177.28</td>
+                        <td>51,625,201</td>
+                        <td>171,516</td>
+                    </tr>
+                    <tr>
+                        <td>UPDATE employee_employeetransaction (Pattern 5)</td>
+                        <td>214,869</td>
+                        <td>219.37</td>
+                        <td>120,607.61</td>
+                        <td>47,136,048</td>
+                        <td>571,879</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="alert alert-warning">
+                <strong>Critical Finding:</strong> The employee_employeetransaction table is the primary performance bottleneck. All top 5 slowest queries are UPDATE operations on this table with different parameter combinations but similar WHERE clause patterns.
+            </div>
+
+            <h3>2.3 Most Problematic Query Pattern</h3>
+            <div class="code-block">
+<pre>UPDATE "employee_employeetransaction"
+SET "first_last_calculated" = $1, "area_calculated" = $2
+WHERE (
+    "employee_employeetransaction"."employee_id" = $3
+    AND "employee_employeetransaction"."approve_status" = $4
+    AND "employee_employeetransaction"."punch_time" BETWEEN $5::timestamptz AND $6::timestamptz
+)
+
+-- Performance Stats:
+-- Executions: 147,949
+-- Average Time: 1,617.65 ms
+-- Max Time: 97,057.58 ms (97 seconds!)
+-- Total Time: 239.33 seconds
+-- Rows Updated: 325,143</pre>
+            </div>
+
+            <h3>2.4 Table Sequential Scan Analysis</h3>
+            <div class="alert alert-warning">
+                <strong>Finding:</strong> Two tables in the nationalpiling database show high sequential scan activity, indicating potential missing indexes.
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table Name</th>
+                        <th>Sequential Scans</th>
+                        <th>Rows Read (Seq)</th>
+                        <th>Index Scans</th>
+                        <th>Index Usage %</th>
+                        <th>Live Rows</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fee;">
+                        <td>transaction_berecalculatebyemployee</td>
+                        <td>439,758</td>
+                        <td>15,435,217,349</td>
+                        <td>36,596</td>
+                        <td style="color: #e74c3c;">7.68%</td>
+                        <td>46,844</td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td>employee_employeetransaction</td>
+                        <td>436,264</td>
+                        <td>4,449,781,637</td>
+                        <td>852,565</td>
+                        <td style="color: #f39c12;">66.15%</td>
+                        <td>11,727</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>3. System Resource Utilization</h2>
+
+            <h3>3.1 CPU and Memory</h3>
+            <div class="metric-grid">
+                <div class="metric-card info">
+                    <div class="metric-label">CPU Usage</div>
+                    <div class="metric-value">15.6%</div>
+                    <small>User mode, healthy level</small>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-label">I/O Wait</div>
+                    <div class="metric-value">3.7%</div>
+                    <small>Elevated, could be optimized</small>
+                </div>
+                <div class="metric-card info">
+                    <div class="metric-label">Memory Used</div>
+                    <div class="metric-value">2.8 GB</div>
+                    <small>Out of 30 GB total</small>
+                </div>
+                <div class="metric-card success">
+                    <div class="metric-label">Buffer Cache</div>
+                    <div class="metric-value">27 GB</div>
+                    <small>Available for caching</small>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>System Capacity:</strong> EC2 t3.2xlarge instance with 32GB RAM and NVMe SSD storage. CPU utilization is healthy at 15.6%, but I/O wait at 3.7% indicates room for optimization through better caching.
+            </div>
+
+            <h3>3.2 Disk I/O Statistics</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Current Value</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Disk Utilization</td>
+                        <td>26.8%</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>Average Write Size</td>
+                        <td>9.49 KB</td>
+                        <td><span class="badge badge-low">Normal</span></td>
+                    </tr>
+                    <tr>
+                        <td>Write Operations/sec</td>
+                        <td>295</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>Disk Space Used</td>
+                        <td>75 GB / 291 GB (26%)</td>
+                        <td><span class="badge badge-low">Healthy</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3.3 PostgreSQL Configuration Settings</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Current Value</th>
+                        <th>Recommended</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fef8e7;">
+                        <td>shared_buffers</td>
+                        <td>20 GB (2,621,440 × 8kB)</td>
+                        <td>24 GB (75% of RAM)</td>
+                        <td><span class="badge badge-medium">Increase</span></td>
+                    </tr>
+                    <tr>
+                        <td>effective_cache_size</td>
+                        <td>28 GB (3,670,016 × 8kB)</td>
+                        <td>24 GB</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>work_mem</td>
+                        <td>32 MB (32,768 kB)</td>
+                        <td>32-64 MB</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>maintenance_work_mem</td>
+                        <td>2 GB (2,097,152 kB)</td>
+                        <td>2 GB</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>max_connections</td>
+                        <td>500</td>
+                        <td>500</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>random_page_cost</td>
+                        <td>1.1</td>
+                        <td>1.1 (SSD optimized)</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>effective_io_concurrency</td>
+                        <td>200</td>
+                        <td>200 (NVMe SSD)</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>4. Connection Pool Analysis (PGBouncer)</h2>
+
+            <h3>4.1 PGBouncer Performance Metrics</h3>
+            <div class="metric-grid">
+                <div class="metric-card success">
+                    <div class="metric-label">Transactions/Second</div>
+                    <div class="metric-value">2,071</div>
+                    <small>Meeting target performance</small>
+                </div>
+                <div class="metric-card success">
+                    <div class="metric-label">Queries/Second</div>
+                    <div class="metric-value">2,236</div>
+                    <small>Healthy query throughput</small>
+                </div>
+                <div class="metric-card success">
+                    <div class="metric-label">Avg Transaction Time</div>
+                    <div class="metric-value">1,287 μs</div>
+                    <small>1.29 ms - excellent</small>
+                </div>
+                <div class="metric-card success">
+                    <div class="metric-label">Avg Query Time</div>
+                    <div class="metric-value">1,030 μs</div>
+                    <small>1.03 ms - excellent</small>
+                </div>
+            </div>
+
+            <h3>4.2 PGBouncer Configuration</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Current Value</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>pool_mode</td>
+                        <td>transaction</td>
+                        <td>Transaction-level pooling</td>
+                        <td><span class="badge badge-low">Optimal</span></td>
+                    </tr>
+                    <tr>
+                        <td>default_pool_size</td>
+                        <td>20</td>
+                        <td>Default connections per database</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>max_client_conn</td>
+                        <td>5,000</td>
+                        <td>Maximum client connections</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>max_db_connections</td>
+                        <td>400</td>
+                        <td>Total PostgreSQL connections</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>idle_transaction_timeout</td>
+                        <td>10s</td>
+                        <td>Close idle transactions quickly</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td>query_wait_timeout</td>
+                        <td>30s</td>
+                        <td>Queue wait time</td>
+                        <td><span class="badge badge-low">Good</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="alert alert-success">
+                <strong>Connection Pooling Status:</strong> PGBouncer is well-configured and performing excellently. Transaction pooling is enabled with appropriate timeouts. The connection pool is handling 2,071 TPS with minimal latency.
+            </div>
+
+            <h3>4.3 High-Traffic Database Pool Assignments</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Database</th>
+                        <th>Custom Pool Size</th>
+                        <th>Rationale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>talal</td>
+                        <td>30</td>
+                        <td>Highest connection count (24 active)</td>
+                    </tr>
+                    <tr>
+                        <td>ovaaccessories</td>
+                        <td>25</td>
+                        <td>High traffic (19 active connections)</td>
+                    </tr>
+                    <tr>
+                        <td>interequipment</td>
+                        <td>25</td>
+                        <td>High transaction volume</td>
+                    </tr>
+                    <tr>
+                        <td>poweron</td>
+                        <td>25</td>
+                        <td>Highest transaction count (766M)</td>
+                    </tr>
+                    <tr>
+                        <td>bobcranes</td>
+                        <td>25</td>
+                        <td>High transaction volume</td>
+                    </tr>
+                    <tr>
+                        <td>mileohotels</td>
+                        <td>25</td>
+                        <td>Largest database (3.3 GB)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>5. Multi-Tenant Metrics</h2>
+
+            <h3>5.1 Database Growth Analysis</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Database</th>
+                        <th>Current Size</th>
+                        <th>Transaction Count</th>
+                        <th>Growth Indicator</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fef8e7;">
+                        <td><strong>nationalpiling</strong></td>
+                        <td>11 GB</td>
+                        <td>Not in top 20 by transactions</td>
+                        <td><span class="badge badge-medium">Monitor</span> - Large but low activity</td>
+                    </tr>
+                    <tr>
+                        <td><strong>mileohotels</strong></td>
+                        <td>3.3 GB</td>
+                        <td>271,546,519</td>
+                        <td><span class="badge badge-low">High</span> - Size matches activity</td>
+                    </tr>
+                    <tr>
+                        <td><strong>shantilal</strong></td>
+                        <td>1.8 GB</td>
+                        <td>199,445,692</td>
+                        <td><span class="badge badge-low">Moderate</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>larosist</strong></td>
+                        <td>1.5 GB</td>
+                        <td>Not in top 20</td>
+                        <td><span class="badge badge-medium">Monitor</span> - Size vs activity mismatch</td>
+                    </tr>
+                    <tr>
+                        <td><strong>belmont</strong></td>
+                        <td>994 MB</td>
+                        <td>Not in top 20</td>
+                        <td><span class="badge badge-medium">Monitor</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>5.2 Heavy User Identification</h3>
+            <div class="alert alert-info">
+                <strong>Top Resource Consumers:</strong> The following tenants are generating the most load on the system and should be monitored closely for capacity planning.
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Tenant (Database)</th>
+                        <th>Transaction Load</th>
+                        <th>Connections</th>
+                        <th>I/O Load</th>
+                        <th>Issues</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><strong>poweron</strong></td>
+                        <td>766M transactions</td>
+                        <td>17</td>
+                        <td>Medium</td>
+                        <td>1,253 deadlocks, 17 temp files</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><strong>bobcranes</strong></td>
+                        <td>552M transactions</td>
+                        <td>10</td>
+                        <td>Very High</td>
+                        <td>4,312 deadlocks, poor cache hit ratio</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><strong>ovaaccessories</strong></td>
+                        <td>371M transactions</td>
+                        <td>19</td>
+                        <td>High</td>
+                        <td>5,621 deadlocks</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><strong>interequipment</strong></td>
+                        <td>346M transactions</td>
+                        <td>4</td>
+                        <td>Medium</td>
+                        <td>12,805 deadlocks (Critical!)</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><strong>talal</strong></td>
+                        <td>322M transactions</td>
+                        <td>24 (Highest!)</td>
+                        <td>Medium</td>
+                        <td>5,155 deadlocks</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>6. Index Optimization Opportunities</h2>
+
+            <h3>6.1 Unused Indexes (Candidates for Removal)</h3>
+            <div class="alert alert-warning">
+                <strong>Finding:</strong> The nationalpiling database contains 15 unused indexes on the background_task_completedtask table, consuming disk space and slowing down write operations. These indexes have never been used since statistics were reset.
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Unused Index Count</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>background_task_completedtask</td>
+                        <td>14 indexes</td>
+                        <td>Drop all except primary key</td>
+                    </tr>
+                    <tr>
+                        <td>attendance_dailyattendance</td>
+                        <td>1 index</td>
+                        <td>Evaluate and potentially drop</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>6.2 Most Utilized Indexes (Keep and Monitor)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Index Name</th>
+                        <th>Scans</th>
+                        <th>Size</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>background_task</td>
+                        <td>background_task_locked_at_0fb0f225</td>
+                        <td>5,930,343</td>
+                        <td>16 kB</td>
+                        <td><span class="badge badge-low">Critical Index</span></td>
+                    </tr>
+                    <tr>
+                        <td>background_task</td>
+                        <td>background_task_pkey</td>
+                        <td>5,167,905</td>
+                        <td>16 kB</td>
+                        <td><span class="badge badge-low">Critical Index</span></td>
+                    </tr>
+                    <tr>
+                        <td>attendance_dailyattendancereport</td>
+                        <td>attendance_dailyattendancereport_pkey</td>
+                        <td>1,842,551</td>
+                        <td>1,904 kB</td>
+                        <td><span class="badge badge-low">Critical Index</span></td>
+                    </tr>
+                    <tr>
+                        <td>employee_employee</td>
+                        <td>employee_employee_pkey</td>
+                        <td>1,435,535</td>
+                        <td>16 kB</td>
+                        <td><span class="badge badge-low">Critical Index</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>6.3 Recommended New Indexes</h3>
+            <div class="recommendation-card priority-high">
+                <h4><span class="badge badge-high">High Priority</span> <span class="badge badge-quick">Quick Win</span> Composite Index for employee_employeetransaction</h4>
+                <p><strong>Table:</strong> employee_employeetransaction</p>
+                <p><strong>Rationale:</strong> This table is the source of the slowest queries (1.6s avg, 97s max). A composite index will dramatically improve UPDATE performance.</p>
+                <div class="code-block">
+<pre>-- Create composite index for common WHERE clause pattern
+CREATE INDEX CONCURRENTLY idx_emp_trans_update_lookup
+ON employee_employeetransaction (employee_id, approve_status, punch_time)
+INCLUDE (first_last_calculated, area_calculated);
+
+-- Expected Impact:
+-- - Reduce average query time from 1,617ms to < 50ms
+-- - Eliminate 97-second max execution time
+-- - Reduce deadlock frequency by 60-80%
+-- - Improve cache hit ratio</pre>
+                </div>
+            </div>
+
+            <div class="recommendation-card priority-high">
+                <h4><span class="badge badge-high">High Priority</span> Index for transaction_berecalculatebyemployee</h4>
+                <p><strong>Table:</strong> transaction_berecalculatebyemployee</p>
+                <p><strong>Rationale:</strong> 439,758 sequential scans with only 7.68% index usage. This table has 46,844 rows but scans read 15 billion rows!</p>
+                <div class="code-block">
+<pre>-- First, analyze query patterns on this table
+SELECT query, calls, mean_exec_time
+FROM pg_stat_statements
+WHERE query LIKE '%transaction_berecalculatebyemployee%'
+ORDER BY calls DESC LIMIT 10;
+
+-- Then create appropriate indexes based on WHERE clause patterns
+-- Example (adjust based on actual query patterns):
+CREATE INDEX CONCURRENTLY idx_transaction_berecalc_emp_id
+ON transaction_berecalculatebyemployee (employee_id, status, created_at);</pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>7. Actionable Recommendations</h2>
+
+            <h3>7.1 Critical Priorities (Immediate Action Required)</h3>
+
+            <div class="recommendation-card priority-high">
+                <h4><span class="badge badge-high">Priority 1</span> <span class="badge badge-quick">Quick Win</span> Increase shared_buffers</h4>
+                <p><strong>Implementation Time:</strong> 30 minutes (requires PostgreSQL restart)</p>
+                <p><strong>Expected Impact:</strong> Improve cache hit ratio from 58-84% to 95%+ for problem databases</p>
+                <p><strong>Steps:</strong></p>
+                <ol>
+                    <li>Backup current configuration</li>
+                    <li>Edit /etc/postgresql/16/main/postgresql.conf</li>
+                    <li>Change: <code>shared_buffers = 24GB</code></li>
+                    <li>Schedule maintenance window for restart</li>
+                    <li>Monitor cache hit ratios after restart</li>
+                </ol>
+                <div class="code-block">
+<pre># Backup configuration
+sudo cp /etc/postgresql/16/main/postgresql.conf /etc/postgresql/16/main/postgresql.conf.backup
+
+# Edit configuration
+sudo nano /etc/postgresql/16/main/postgresql.conf
+# Change: shared_buffers = 24GB
+
+# Restart PostgreSQL
+sudo systemctl restart postgresql
+
+# Monitor cache hit ratio
+psql -c "SELECT datname,
+  ROUND((blks_hit::numeric / (blks_hit + blks_read + 0.001)) * 100, 2) AS cache_hit_ratio
+  FROM pg_stat_database
+  WHERE datname NOT IN ('template0', 'template1')
+  ORDER BY cache_hit_ratio;"</pre>
+                </div>
+            </div>
+
+            <div class="recommendation-card priority-high">
+                <h4><span class="badge badge-high">Priority 2</span> <span class="badge badge-quick">Quick Win</span> Create Composite Index</h4>
+                <p><strong>Implementation Time:</strong> 2-4 hours (CONCURRENTLY, no downtime)</p>
+                <p><strong>Expected Impact:</strong> Reduce 97-second queries to < 1 second, eliminate major deadlock source</p>
+                <p><strong>Steps:</strong></p>
+                <ol>
+                    <li>Run index creation during off-peak hours</li>
+                    <li>Monitor progress with pg_stat_progress_create_index</li>
+                    <li>Test query performance after creation</li>
+                    <li>Monitor deadlock reduction over 24 hours</li>
+                </ol>
+                <div class="code-block">
+<pre>-- Run this on all tenant databases showing high deadlock activity
+-- Starting with: interequipment, bobcranes, ovaaccessories, talal
+
+\c interequipment
+
+CREATE INDEX CONCURRENTLY idx_emp_trans_update_lookup
+ON employee_employeetransaction (employee_id, approve_status, punch_time)
+INCLUDE (first_last_calculated, area_calculated);
+
+-- Monitor progress
+SELECT phase, blocks_done, blocks_total,
+       ROUND(100.0 * blocks_done / NULLIF(blocks_total, 0), 2) AS percent_complete
+FROM pg_stat_progress_create_index;</pre>
+                </div>
+            </div>
+
+            <div class="recommendation-card priority-high">
+                <h4><span class="badge badge-high">Priority 3</span> Investigate Deadlock Root Cause</h4>
+                <p><strong>Implementation Time:</strong> 1 day (investigation + fix)</p>
+                <p><strong>Expected Impact:</strong> Eliminate 12,000+ deadlocks, improve application stability</p>
+                <p><strong>Steps:</strong></p>
+                <ol>
+                    <li>Enable deadlock logging: <code>log_lock_waits = on</code>, <code>deadlock_timeout = 1s</code></li>
+                    <li>Capture deadlock details from PostgreSQL logs</li>
+                    <li>Identify lock ordering issues in application code</li>
+                    <li>Implement FOR UPDATE SKIP LOCKED or explicit lock ordering</li>
+                    <li>Test in staging before production deployment</li>
+                </ol>
+                <div class="code-block">
+<pre># Enable deadlock logging
+sudo nano /etc/postgresql/16/main/postgresql.conf
+# Add:
+log_lock_waits = on
+deadlock_timeout = 1000  # 1 second
+
+# Reload configuration (no restart needed)
+sudo systemctl reload postgresql
+
+# Monitor deadlocks in real-time
+sudo tail -f /var/log/postgresql/postgresql-16-main.log | grep -i deadlock
+
+# Application code fix example:
+# BEFORE (prone to deadlocks):
+UPDATE employee_employeetransaction SET ...
+WHERE employee_id = ? AND approve_status = ?
+
+# AFTER (prevents deadlocks):
+SELECT * FROM employee_employeetransaction
+WHERE employee_id = ? AND approve_status = ?
+FOR UPDATE SKIP LOCKED;
+
+UPDATE employee_employeetransaction SET ...
+WHERE id IN (...);</pre>
+                </div>
+            </div>
+
+            <h3>7.2 Medium Priority (Complete Within 1 Week)</h3>
+
+            <div class="recommendation-card priority-medium">
+                <h4><span class="badge badge-medium">Priority 4</span> Remove Unused Indexes</h4>
+                <p><strong>Implementation Time:</strong> 2 hours</p>
+                <p><strong>Expected Impact:</strong> Faster write operations, reduced storage, improved vacuum performance</p>
+                <div class="code-block">
+<pre>-- Drop unused indexes on background_task_completedtask
+\c nationalpiling
+
+DROP INDEX CONCURRENTLY IF EXISTS background_task_completedtask_locked_at_29c62708;
+DROP INDEX CONCURRENTLY IF EXISTS background_task_completedtask_task_name_388dabc2_like;
+DROP INDEX CONCURRENTLY IF EXISTS background_task_completedtask_task_hash_91187576;
+DROP INDEX CONCURRENTLY IF EXISTS background_task_completedtask_locked_by_edc8a213_like;
+-- (Continue for remaining 10 unused indexes)
+
+-- Verify index removal
+SELECT schemaname, relname, indexrelname, idx_scan
+FROM pg_stat_user_indexes
+WHERE schemaname = 'public' AND relname = 'background_task_completedtask';</pre>
+                </div>
+            </div>
+
+            <div class="recommendation-card priority-medium">
+                <h4><span class="badge badge-medium">Priority 5</span> Optimize transaction_berecalculatebyemployee</h4>
+                <p><strong>Implementation Time:</strong> 1 day (investigation + index creation)</p>
+                <p><strong>Expected Impact:</strong> Eliminate 439,758 sequential scans, improve query performance</p>
+                <p>Follow the investigation script in Section 6.3 to identify appropriate indexes.</p>
+            </div>
+
+            <div class="recommendation-card priority-medium">
+                <h4><span class="badge badge-medium">Priority 6</span> Implement Monitoring and Alerting</h4>
+                <p><strong>Implementation Time:</strong> 3 days</p>
+                <p><strong>Tools:</strong> Prometheus + Grafana + postgres_exporter OR pgAdmin 4 OR Datadog</p>
+                <p><strong>Key Metrics to Monitor:</strong></p>
+                <ul>
+                    <li>Cache hit ratio by database (alert if < 90%)</li>
+                    <li>Deadlock count per hour (alert if > 10)</li>
+                    <li>Query execution time 95th percentile (alert if > 5 seconds)</li>
+                    <li>Connection pool saturation (alert if > 80%)</li>
+                    <li>Disk I/O wait time (alert if > 10%)</li>
+                    <li>Replication lag (if applicable)</li>
+                </ul>
+            </div>
+
+            <h3>7.3 Long-Term Improvements (Complete Within 1 Month)</h3>
+
+            <div class="recommendation-card priority-low">
+                <h4><span class="badge badge-low">Priority 7</span> Database Size Management</h4>
+                <p><strong>Target Databases:</strong> nationalpiling (11 GB), mileohotels (3.3 GB), shantilal (1.8 GB)</p>
+                <p><strong>Actions:</strong></p>
+                <ul>
+                    <li>Implement data archiving strategy for old records</li>
+                    <li>Set up table partitioning for large tables (attendance_dailyattendancereport, employee_employeetransaction)</li>
+                    <li>Schedule regular VACUUM FULL during maintenance windows</li>
+                    <li>Review data retention policies with stakeholders</li>
+                </ul>
+            </div>
+
+            <div class="recommendation-card priority-low">
+                <h4><span class="badge badge-low">Priority 8</span> Query Optimization in Application Code</h4>
+                <p><strong>Focus Areas:</strong></p>
+                <ul>
+                    <li>Review ORM-generated queries for N+1 query patterns</li>
+                    <li>Implement batch updates instead of individual UPDATE statements</li>
+                    <li>Add query result caching for frequently accessed, rarely changing data</li>
+                    <li>Consider denormalization for reporting tables</li>
+                    <li>Implement connection pooling at application level (if not already done)</li>
+                </ul>
+            </div>
+
+            <div class="recommendation-card priority-low">
+                <h4><span class="badge badge-low">Priority 9</span> Consider Read Replicas</h4>
+                <p><strong>Justification:</strong> With 2,071 TPS and potential to scale to 2,000 TPS spikes, read replicas would:</p>
+                <ul>
+                    <li>Offload reporting queries from primary database</li>
+                    <li>Improve primary database write performance</li>
+                    <li>Provide high availability and disaster recovery</li>
+                    <li>Enable zero-downtime PostgreSQL upgrades</li>
+                </ul>
+                <p><strong>Implementation:</strong> Set up 1-2 read replicas using PostgreSQL streaming replication</p>
+            </div>
+
+            <div class="recommendation-card priority-low">
+                <h4><span class="badge badge-low">Priority 10</span> Capacity Planning</h4>
+                <p><strong>Current Growth Rate:</strong> Requires analysis of database size over time</p>
+                <p><strong>Recommended Actions:</strong></p>
+                <ul>
+                    <li>Document current database sizes and transaction rates</li>
+                    <li>Track growth rate monthly</li>
+                    <li>Project when current resources will be exhausted</li>
+                    <li>Plan for vertical scaling (larger instance) or horizontal scaling (sharding)</li>
+                    <li>Establish tenant offboarding procedures for inactive accounts</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>8. SQL Optimization Scripts</h2>
+
+            <h3>8.1 Quick Win Script (Run First)</h3>
+            <div class="code-block">
+<pre>#!/bin/bash
+# PostgreSQL Quick Win Optimizations
+# Run as sudo user with PostgreSQL access
+
+echo "=== PostgreSQL Quick Win Optimizations ==="
+echo "Starting at: $(date)"
+
+# 1. Create backup
+echo "Creating configuration backup..."
+sudo cp /etc/postgresql/16/main/postgresql.conf /etc/postgresql/16/main/postgresql.conf.backup_$(date +%Y%m%d)
+
+# 2. Update shared_buffers
+echo "Updating shared_buffers to 24GB..."
+sudo sed -i 's/^shared_buffers = .*/shared_buffers = 24GB/' /etc/postgresql/16/main/postgresql.conf
+
+# 3. Enable deadlock logging
+echo "Enabling deadlock logging..."
+sudo sed -i 's/^#log_lock_waits = .*/log_lock_waits = on/' /etc/postgresql/16/main/postgresql.conf
+sudo sed -i 's/^#deadlock_timeout = .*/deadlock_timeout = 1000/' /etc/postgresql/16/main/postgresql.conf
+
+# 4. Restart PostgreSQL (schedule during maintenance window!)
+echo "Restarting PostgreSQL..."
+sudo systemctl restart postgresql
+
+# Wait for PostgreSQL to start
+sleep 10
+
+# 5. Verify changes
+echo "Verifying configuration..."
+sudo -u postgres psql -c "SHOW shared_buffers;"
+sudo -u postgres psql -c "SHOW log_lock_waits;"
+
+echo "=== Quick Win Optimizations Complete ==="
+echo "Finished at: $(date)"</pre>
+            </div>
+
+            <h3>8.2 Index Creation Script</h3>
+            <div class="code-block">
+<pre>#!/bin/bash
+# Create performance indexes on high-traffic databases
+# Run as sudo user with PostgreSQL access
+# Uses CONCURRENTLY to avoid locking
+
+DATABASES=("interequipment" "bobcranes" "ovaaccessories" "talal" "poweron" "mileohotels")
+
+for db in "${DATABASES[@]}"; do
+    echo "Creating index on $db..."
+    sudo -u postgres psql -d "$db" << EOF
+-- Create composite index for UPDATE query optimization
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_emp_trans_update_lookup
+ON employee_employeetransaction (employee_id, approve_status, punch_time)
+INCLUDE (first_last_calculated, area_calculated);
+
+-- Verify index creation
+\d employee_employeetransaction
+
+-- Get index size
+SELECT pg_size_pretty(pg_relation_size('idx_emp_trans_update_lookup'));
+EOF
+    echo "Completed $db"
+    echo "---"
+done
+
+echo "All indexes created successfully!"</pre>
+            </div>
+
+            <h3>8.3 Cache Hit Ratio Monitoring Script</h3>
+            <div class="code-block">
+<pre>#!/bin/bash
+# Monitor cache hit ratios across all databases
+# Run regularly to track improvement
+
+sudo -u postgres psql << EOF
+SELECT
+    datname as "Database",
+    numbackends as "Connections",
+    xact_commit as "Transactions",
+    ROUND((blks_hit::numeric / (blks_hit + blks_read + 0.001)) * 100, 2) AS "Cache Hit %",
+    CASE
+        WHEN ROUND((blks_hit::numeric / (blks_hit + blks_read + 0.001)) * 100, 2) >= 95 THEN 'Good'
+        WHEN ROUND((blks_hit::numeric / (blks_hit + blks_read + 0.001)) * 100, 2) >= 90 THEN 'Monitor'
+        ELSE 'Critical'
+    END as "Status"
+FROM pg_stat_database
+WHERE datname NOT IN ('template0', 'template1', 'postgres')
+ORDER BY "Cache Hit %" ASC
+LIMIT 20;
+EOF</pre>
+            </div>
+
+            <h3>8.4 Deadlock Detection Script</h3>
+            <div class="code-block">
+<pre>#!/bin/bash
+# Detect and report deadlock activity
+# Run hourly to track improvement
+
+sudo -u postgres psql << EOF
+SELECT
+    datname as "Database",
+    deadlocks as "Total Deadlocks",
+    CASE
+        WHEN deadlocks > 1000 THEN 'Critical'
+        WHEN deadlocks > 100 THEN 'High'
+        WHEN deadlocks > 10 THEN 'Medium'
+        ELSE 'Low'
+    END as "Severity"
+FROM pg_stat_database
+WHERE datname NOT IN ('template0', 'template1')
+  AND deadlocks > 0
+ORDER BY deadlocks DESC;
+
+-- Show deadlock trend (requires regular snapshots)
+SELECT
+    'Run this query every hour and compare results' as "Note",
+    'Consider setting up pg_stat_statements_reset() on schedule' as "Recommendation";
+EOF</pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>9. Summary and Next Steps</h2>
+
+            <div class="alert alert-success">
+                <strong>Overall System Health:</strong> The PostgreSQL system is operational and meeting TPS targets (2,071 TPS). However, three critical issues require immediate attention to prevent degradation and improve user experience.
+            </div>
+
+            <h3>9.1 Implementation Timeline</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timeframe</th>
+                        <th>Actions</th>
+                        <th>Expected Impact</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fee;">
+                        <td><strong>Week 1</strong></td>
+                        <td>
+                            • Increase shared_buffers<br>
+                            • Create composite indexes<br>
+                            • Enable deadlock logging
+                        </td>
+                        <td>
+                            • Cache hit ratio: 58% → 95%<br>
+                            • Query time: 1,617ms → <50ms<br>
+                            • Begin deadlock tracking
+                        </td>
+                    </tr>
+                    <tr style="background-color: #fef8e7;">
+                        <td><strong>Week 2</strong></td>
+                        <td>
+                            • Investigate deadlock root cause<br>
+                            • Remove unused indexes<br>
+                            • Optimize transaction_berecalculatebyemployee
+                        </td>
+                        <td>
+                            • Reduce deadlocks by 60-80%<br>
+                            • Improve write performance<br>
+                            • Eliminate 439k sequential scans
+                        </td>
+                    </tr>
+                    <tr style="background-color: #e8f4f8;">
+                        <td><strong>Week 3-4</strong></td>
+                        <td>
+                            • Implement monitoring/alerting<br>
+                            • Begin data archiving strategy<br>
+                            • Review application code optimization
+                        </td>
+                        <td>
+                            • Proactive issue detection<br>
+                            • Controlled database growth<br>
+                            • Long-term performance improvements
+                        </td>
+                    </tr>
+                    <tr style="background-color: #eafaf1;">
+                        <td><strong>Month 2+</strong></td>
+                        <td>
+                            • Implement table partitioning<br>
+                            • Consider read replicas<br>
+                            • Establish capacity planning
+                        </td>
+                        <td>
+                            • Scalability for future growth<br>
+                            • High availability<br>
+                            • Predictable resource needs
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>9.2 Key Success Metrics</h3>
+            <p>Track these metrics weekly to measure improvement:</p>
+            <ul>
+                <li><strong>Cache Hit Ratio:</strong> Target 95%+ for all databases (currently 58-98%)</li>
+                <li><strong>Average Query Time:</strong> Target < 100ms for UPDATE queries (currently 1,617ms)</li>
+                <li><strong>Deadlock Count:</strong> Target < 10 per database per day (currently 12,805 total)</li>
+                <li><strong>Connection Pool Saturation:</strong> Target < 60% utilization (currently healthy)</li>
+                <li><strong>I/O Wait:</strong> Target < 2% (currently 3.7%)</li>
+            </ul>
+
+            <h3>9.3 Risk Assessment</h3>
+            <div class="alert alert-warning">
+                <strong>Risk Level: Medium</strong><br>
+                The system is currently stable but has performance issues that will worsen with growth. Immediate action on the top 3 critical issues will prevent future outages and maintain user experience.
+            </div>
+
+            <h3>9.4 Contacts and Support</h3>
+            <p>For questions about this report or implementation assistance:</p>
+            <ul>
+                <li><strong>Database Team:</strong> Review and approve all changes before production deployment</li>
+                <li><strong>Application Team:</strong> Coordinate on query optimization and deadlock resolution</li>
+                <li><strong>DevOps Team:</strong> Schedule maintenance windows for PostgreSQL restart</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p><strong>Report Generated:</strong> November 22, 2025</p>
+            <p><strong>Analysis Period:</strong> Last 24 hours (November 21-22, 2025)</p>
+            <p><strong>PostgreSQL Version:</strong> 16.10 (Ubuntu 16.10-1.pgdg22.04+1)</p>
+            <p><strong>Instance:</strong> EC2 t3.2xlarge | 8 vCPU | 32 GB RAM | NVMe SSD</p>
+            <p style="margin-top: 20px; color: #95a5a6; font-size: 0.9em;">
+                This report was generated using automated performance analysis tools.<br>
+                Recommendations should be reviewed and approved by database administrators before implementation.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
